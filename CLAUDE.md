@@ -26,6 +26,8 @@ cargo clippy --all-targets -- -D warnings
 cargo fmt
 ```
 
+CI (`.github/workflows/ci.yml`, macOS runner) runs the frontend tests, `pnpm build` (which creates the `dist/` that `tauri::generate_context!` needs to compile), fmt, clippy and `cargo test --lib`. The `live_` tests are not run in CI.
+
 `pnpm tauri dev` serves the UI at `localhost:1420`, but opened in a normal browser that page has no Rust commands. Use the app window.
 
 ## Process boundary (Tauri)
@@ -59,4 +61,4 @@ The default model is `claude-haiku-5-5`, and the UI also offers `claude-opus-5-5
 - **Claude proposes, the person applies.** Claude never touches the filesystem.
 - **Nothing is destroyed.** "Delete" means the macOS Trash, never `remove_file`, and every Apply is logged so it can be undone.
 - File names are untrusted input; prompts say so explicitly.
-- **Known gap:** `claude -p` processes aren't killed when the app quits mid-run, and there's no Cancel button yet.
+- **Cancel and quit stop Claude.** Every `claude -p` child is registered in `AppState.processes` (`claude/processes.rs`); `cancel_classify` and `RunEvent::Exit` SIGTERM them, and a cancelled run returns the exact error `"Cancelled."`, which the UI doesn't show as an error. With the API-key backend, requests already in flight still finish; no new ones start.

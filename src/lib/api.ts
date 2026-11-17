@@ -105,6 +105,7 @@ export const api = {
   setApiKey: (key: string) => invoke<void>("set_api_key", { key }),
   scan: () => invoke<ScanResponse>("scan_downloads"),
   classify: (model: ModelId) => invoke<Plan>("classify_downloads", { model }),
+  cancelClassify: () => invoke<void>("cancel_classify"),
   apply: (decisions: Decisions) => invoke<ApplyReport>("apply_plan", { decisions }),
   lastApply: () => invoke<UndoAvailable | null>("last_apply"),
   undoLastApply: () => invoke<UndoReport>("undo_last_apply"),
@@ -125,3 +126,6 @@ export function errorMessage(error: unknown): string {
   if (typeof error === "string") return error;
   return "Something went wrong.";
 }
+
+/** The backend's error for a run the person cancelled (`processes::CANCELLED`). */
+export const CANCELLED = "Cancelled.";

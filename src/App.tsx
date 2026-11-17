@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   api,
+  CANCELLED,
   errorMessage,
   events,
   type ApplyReport,
@@ -74,7 +75,9 @@ export default function App() {
     try {
       await action();
     } catch (e) {
-      setError(errorMessage(e));
+      const message = errorMessage(e);
+      // Cancelling is the person's choice, not an error.
+      if (message !== CANCELLED) setError(message);
     } finally {
       setBusy(null);
       setScanProgress(null);
@@ -121,6 +124,10 @@ export default function App() {
       refreshUndo();
     });
 
+  const doCancel = () => {
+    api.cancelClassify().catch((e) => setError(errorMessage(e)));
+  };
+
   const decide = (id: number, decision: Decision) => setDecisions((d) => setDecision(d, id, decision));
   const toggle = (id: number) => {
     if (plan) setDecisions((d) => toggleTrash(d, plan, id));
@@ -146,6 +153,7 @@ export default function App() {
         onModel={setModel}
         onScan={doScan}
         onOrganize={doOrganize}
+        onCancel={doCancel}
       />
 
       <main style={{ display: "grid", gridTemplateRows: error ? "auto 1fr" : "1fr", minHeight: 0 }}>

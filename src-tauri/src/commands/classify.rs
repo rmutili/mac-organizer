@@ -5,6 +5,7 @@ use super::{AppState, lock, unix_now};
 use crate::claude::classify::{ALLOWED_MODELS, ClassifyProgress, DEFAULT_MODEL, classify};
 use crate::claude::client::{http_client, send_message};
 use crate::claude::plan::Plan;
+use crate::claude::processes::CANCELLED;
 use crate::claude::response::parse_plan;
 use crate::claude::{cli, keychain};
 
@@ -54,6 +55,13 @@ fn resolve_model(model: Option<&str>) -> Result<&'static str, String> {
 /// Event the UI listens to while a classification runs.
 pub const PROGRESS_EVENT: &str = "classify-progress";
 
+/// Stop the running Organize: kills Claude Code processes and makes the run
+/// return "Cancelled." instead of a plan.
+#[tauri::command]
+pub fn cancel_classify(state: State<'_, AppState>) {
+    state.processes.cancel();
+}
+
 #[tauri::command]
 pub async fn classify_downloads(
     model: Option<String>,
@@ -62,6 +70,8 @@ pub async fn classify_downloads(
     state: State<'_, AppState>,
 ) -> Result<Plan, String> {
     let model = resolve_model(model.as_deref())?;
+    let processes = state.processes.clone();
+    processes.reset();
     let (items, scanned_at) = {
         let scan = lock(&state.scan)?;
         let scan = scan.as_ref().ok_or("Scan your Downloads folder first.")?;
@@ -89,11 +99,13 @@ pub async fn classify_downloads(
                 model,
                 now,
                 |body| {
-                    let binary = binary.clone();
+                    let (binary, processes) = (binary.clone(), processes.clone());
                     async move {
-                        tauri::async_runtime::spawn_blocking(move || cli::run_batch(&binary, &body))
-                            .await
-                            .map_err(|e| format!("Claude Code batch was interrupted: {e}"))?
+                        tauri::async_runtime::spawn_blocking(move || {
+                            cli::run_batch(&binary, &body, &processes)
+                        })
+                        .await
+                        .map_err(|e| format!("Claude Code batch was interrupted: {e}"))?
                     }
                 },
                 on_progress,
@@ -110,7 +122,12 @@ pub async fn classify_downloads(
                 now,
                 |body| {
                     let (http, api_key) = (http.clone(), api_key.clone());
+                    let processes = processes.clone();
                     async move {
+                        // HTTP requests already in flight finish; no new ones start.
+                        if processes.is_cancelled() {
+                            return Err(CANCELLED.to_string());
+                        }
                         let response = send_message(&http, &api_key, &body)
                             .await
                             .map_err(|e| e.to_string())?;

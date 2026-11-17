@@ -4,10 +4,11 @@ pub mod classify;
 pub mod ops;
 pub mod scan;
 
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::claude::plan::Plan;
+use crate::claude::processes::ProcessRegistry;
 use crate::scanner::types::Scan;
 
 /// The latest scan and the plan built from it. Later commands (classify,
@@ -17,6 +18,8 @@ use crate::scanner::types::Scan;
 pub struct AppState {
     pub scan: Mutex<Option<Scan>>,
     pub plan: Mutex<Option<Plan>>,
+    /// Running `claude -p` processes, for Cancel and for app exit.
+    pub processes: Arc<ProcessRegistry>,
 }
 
 pub(crate) fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, String> {

@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 mod claude;
 mod commands;
 mod ops;
@@ -13,6 +15,7 @@ pub fn run() {
             commands::classify::claude_backends,
             commands::classify::clear_api_key,
             commands::classify::classify_downloads,
+            commands::classify::cancel_classify,
             commands::ops::apply_plan,
             commands::ops::last_apply,
             commands::ops::undo_last_apply,
@@ -20,6 +23,12 @@ pub fn run() {
             commands::ops::quick_look,
             commands::ops::reveal_in_finder,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Don't leave `claude -p` batches running after the window closes.
+            if let tauri::RunEvent::Exit = event {
+                app.state::<commands::AppState>().processes.kill_all();
+            }
+        });
 }

@@ -13,6 +13,7 @@ interface ToolbarProps {
   onModel: (model: ModelId) => void;
   onScan: () => void;
   onOrganize: () => void;
+  onCancel: () => void;
 }
 
 function Progress({ fraction, label }: { fraction: number; label: string }) {
@@ -51,8 +52,16 @@ export function Toolbar(props: ToolbarProps) {
       {busy === "scanning" && scan && scan.total > 0 && (
         <Progress fraction={(scan.done + 1) / scan.total} label={scanLabel(scan)} />
       )}
-      {busy === "organizing" && classify && (
-        <Progress fraction={classify.done / Math.max(1, classify.total)} label={classifyLabel(classify)} />
+      {busy === "organizing" && (
+        <>
+          <Progress
+            fraction={classify ? classify.done / Math.max(1, classify.total) : 0}
+            label={classify ? classifyLabel(classify) : "Starting Claude…"}
+          />
+          <button className="btn btn--danger" onClick={props.onCancel}>
+            Cancel
+          </button>
+        </>
       )}
       {busy === "applying" && <Progress fraction={1} label="Applying changes…" />}
       {!busy && <span className="toolbar__meta">{props.backendLabel}</span>}

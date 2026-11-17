@@ -11,6 +11,8 @@ use std::process::{Command, Stdio};
 
 use serde_json::Value;
 
+use super::processes::{CANCELLED, ProcessRegistry};
+
 use super::plan::RawPlan;
 
 /// GUI apps launched from Finder don't inherit the shell PATH, so check the
@@ -102,10 +104,18 @@ pub fn parse_cli_output(stdout: &str) -> Result<RawPlan, String> {
         .map_err(|e| format!("Claude Code returned a plan in an unexpected format: {e}"))
 }
 
-/// Blocking: run on a blocking thread.
-pub fn run_batch(binary: &Path, body: &Value) -> Result<RawPlan, String> {
+/// Blocking: run on a blocking thread. The process is tracked in `processes`
+/// so Cancel (or quitting the app) can stop it.
+pub fn run_batch(
+    binary: &Path,
+    body: &Value,
+    processes: &ProcessRegistry,
+) -> Result<RawPlan, String> {
+    if processes.is_cancelled() {
+        return Err(CANCELLED.into());
+    }
     let (args, stdin) = cli_invocation(body)?;
-    let mut child = Command::new(binary)
+    let child = Command::new(binary)
         .args(&args)
         // A neutral directory so no project CLAUDE.md is picked up.
         .current_dir(std::env::temp_dir())
@@ -114,15 +124,18 @@ pub fn run_batch(binary: &Path, body: &Value) -> Result<RawPlan, String> {
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("Couldn't start Claude Code: {e}"))?;
-    child
-        .stdin
-        .take()
-        .ok_or("Couldn't send data to Claude Code.")?
-        .write_all(stdin.as_bytes())
-        .map_err(|e| format!("Couldn't send data to Claude Code: {e}"))?;
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("Claude Code didn't finish: {e}"))?;
+    let pid = child.id();
+    processes.register(pid);
+    if processes.is_cancelled() {
+        // Cancel landed between the check above and the spawn.
+        processes.kill_all();
+    }
+    let output = feed_and_wait(child, &stdin);
+    processes.unregister(pid);
+    if processes.is_cancelled() {
+        return Err(CANCELLED.into());
+    }
+    let output = output?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() && stdout.trim().is_empty() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -135,11 +148,39 @@ pub fn run_batch(binary: &Path, body: &Value) -> Result<RawPlan, String> {
     parse_cli_output(&stdout)
 }
 
+fn feed_and_wait(
+    mut child: std::process::Child,
+    stdin: &str,
+) -> Result<std::process::Output, String> {
+    let written = child
+        .stdin
+        .take()
+        .ok_or_else(|| "Couldn't send data to Claude Code.".to_string())
+        .and_then(|mut pipe| {
+            pipe.write_all(stdin.as_bytes())
+                .map_err(|e| format!("Couldn't send data to Claude Code: {e}"))
+        });
+    // Always reap the child, even if writing failed, so it isn't left running.
+    let output = child
+        .wait_with_output()
+        .map_err(|e| format!("Claude Code didn't finish: {e}"));
+    written.and(output)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::claude::request::{SYSTEM_PROMPT, build_folders_request, build_request};
     use serde_json::json;
+
+    #[test]
+    fn cancelled_run_never_starts_the_cli() {
+        let registry = ProcessRegistry::default();
+        registry.cancel();
+        // A binary that doesn't exist: reaching spawn would give a different error.
+        let result = run_batch(Path::new("/nonexistent/claude"), &json!({}), &registry);
+        assert_eq!(result, Err(CANCELLED.to_string()));
+    }
 
     #[test]
     fn finds_binary_in_home_install_dir_before_path() {
@@ -259,13 +300,17 @@ mod tests {
         ];
         let binary = locate().expect("claude CLI not found");
 
-        let proposed =
-            run_batch(&binary, &build_folders_request("claude-haiku-5-5", &items)).unwrap();
+        let proposed = run_batch(
+            &binary,
+            &build_folders_request("claude-haiku-5-5", &items),
+            &ProcessRegistry::default(),
+        )
+        .unwrap();
         assert!(!proposed.folders.is_empty());
 
         let folders = vec!["Installers".to_string(), "Invoices".to_string()];
         let body = build_request("claude-haiku-5-5", &items, &folders, 1_800_000_000);
-        let plan = run_batch(&binary, &body).unwrap();
+        let plan = run_batch(&binary, &body, &ProcessRegistry::default()).unwrap();
 
         assert_eq!(plan.assignments.len(), 2);
         assert!(plan.assignments.iter().all(|a| folders.contains(&a.folder)));
