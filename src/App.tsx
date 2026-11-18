@@ -25,6 +25,7 @@ import {
   toDecisions,
   toggleTrash,
 } from "./lib/review";
+import { type Location, type PickedFolder, locationLabel } from "./lib/folders";
 import { type Busy, Toolbar } from "./components/Toolbar";
 import { StartScreen } from "./components/start/StartScreen";
 import { HeatmapView } from "./components/overview/HeatmapView";
@@ -43,6 +44,8 @@ const NOT_IN_APP = "This page is running in a regular browser. Use the Mac Organ
 export default function App() {
   const [backends, setBackends] = useState<BackendStatus | null>(null);
   const [model, setModel] = useState<ModelId>("claude-haiku-5-5");
+  const [location, setLocation] = useState<Location>("downloads");
+  const [picked, setPicked] = useState<PickedFolder | null>(null);
   const [scan, setScan] = useState<ScanResponse | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [decisions, setDecisions] = useState<DecisionMap>({});
@@ -94,7 +97,7 @@ export default function App() {
     run("scanning", async () => {
       setSheet(null);
       clearReview();
-      setScan(await api.scan());
+      setScan(await api.scan(location));
       refreshUndo();
     });
 
@@ -124,6 +127,24 @@ export default function App() {
       refreshUndo();
     });
 
+  const doPickFolder = async () => {
+    setError(null);
+    try {
+      const folder = await api.pickFolder();
+      if (!folder) return;
+      setPicked(folder);
+      setLocation("picked");
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  };
+
+  const changeFolder = () => {
+    setSheet(null);
+    setScan(null);
+    clearReview();
+  };
+
   const doCancel = () => {
     api.cancelClassify().catch((e) => setError(errorMessage(e)));
   };
@@ -145,6 +166,7 @@ export default function App() {
       <Toolbar
         busy={busy}
         hasScan={!!scan}
+        folderName={scan?.name ?? locationLabel(location, picked)}
         canOrganize={canOrganize}
         backendLabel={backendLabel}
         model={model}
@@ -154,6 +176,7 @@ export default function App() {
         onScan={doScan}
         onOrganize={doOrganize}
         onCancel={doCancel}
+        onChangeFolder={changeFolder}
       />
 
       <main style={{ display: "grid", gridTemplateRows: error ? "auto 1fr" : "1fr", minHeight: 0 }}>
@@ -195,6 +218,10 @@ export default function App() {
             backends={backends}
             busy={busy}
             undoAvailable={undoAvailable}
+            location={location}
+            picked={picked}
+            onLocation={setLocation}
+            onPickFolder={doPickFolder}
             onScan={doScan}
             onUndo={doUndo}
             onKeySaved={() => setBackends((b) => (b ? { ...b, api_key: true } : b))}
@@ -210,6 +237,7 @@ export default function App() {
       {sheet?.mode === "confirm" && scan && (
         <ApplySheet
           mode="confirm"
+          folderName={scan.name}
           summary={summary}
           allCopiesTrashed={fullyTrashedDuplicateGroups(scan.items, decisions)}
           isBusy={busy === "applying"}

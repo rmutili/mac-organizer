@@ -3,6 +3,7 @@ import { type View, type ViewCount, viewKey } from "../../lib/review";
 
 interface SidebarProps {
   plan: Plan;
+  folderName: string;
   counts: Record<string, ViewCount>;
   view: View;
   onSelect: (view: View) => void;
@@ -32,7 +33,7 @@ const REVIEW_VIEWS: { view: View; label: string; dot: string }[] = [
   { view: { kind: "attention" }, label: "Needs attention", dot: "attention" },
 ];
 
-export function Sidebar({ plan, counts, view, onSelect }: SidebarProps) {
+export function Sidebar({ plan, folderName, counts, view, onSelect }: SidebarProps) {
   const current = viewKey(view);
   const folders = [...plan.folders].sort(
     (a, b) => (counts[`folder:${b.name}`]?.count ?? 0) - (counts[`folder:${a.name}`]?.count ?? 0),
@@ -74,7 +75,7 @@ export function Sidebar({ plan, counts, view, onSelect }: SidebarProps) {
         );
       })}
       <NavItem
-        label="Stays in Downloads"
+        label={`Stays in ${folderName}`}
         dot="keep"
         count={counts.unchanged?.count}
         isCurrent={current === "unchanged"}

@@ -8,6 +8,7 @@ use crate::claude::plan::Plan;
 use crate::claude::processes::CANCELLED;
 use crate::claude::response::parse_plan;
 use crate::claude::{cli, keychain};
+use crate::scanner::roots::display_name;
 
 /// How the app reaches Claude: the local Claude Code CLI (the person's Claude
 /// login) or the Messages API with a key stored in Keychain.
@@ -63,7 +64,7 @@ pub fn cancel_classify(state: State<'_, AppState>) {
 }
 
 #[tauri::command]
-pub async fn classify_downloads(
+pub async fn classify_folder(
     model: Option<String>,
     backend: Option<Backend>,
     app: AppHandle,
@@ -72,10 +73,14 @@ pub async fn classify_downloads(
     let model = resolve_model(model.as_deref())?;
     let processes = state.processes.clone();
     processes.reset();
-    let (items, scanned_at) = {
+    let (items, scanned_at, folder) = {
         let scan = lock(&state.scan)?;
-        let scan = scan.as_ref().ok_or("Scan your Downloads folder first.")?;
-        (scan.items.clone(), scan.scanned_at)
+        let scan = scan.as_ref().ok_or("Scan a folder first.")?;
+        (
+            scan.items.clone(),
+            scan.scanned_at,
+            display_name(&scan.root),
+        )
     };
     let now = unix_now();
     let cli_binary = cli::locate();
@@ -96,6 +101,7 @@ pub async fn classify_downloads(
             )?;
             classify(
                 &items,
+                &folder,
                 model,
                 now,
                 |body| {
@@ -118,6 +124,7 @@ pub async fn classify_downloads(
             let http = http_client()?;
             classify(
                 &items,
+                &folder,
                 model,
                 now,
                 |body| {
@@ -145,7 +152,9 @@ pub async fn classify_downloads(
         .as_ref()
         .is_some_and(|s| s.scanned_at == scanned_at);
     if !still_current {
-        return Err("Downloads was rescanned while Claude was working. Run organize again.".into());
+        return Err(
+            "The folder was rescanned while Claude was working. Run organize again.".into(),
+        );
     }
     *lock(&state.plan)? = Some(plan.clone());
     Ok(plan)

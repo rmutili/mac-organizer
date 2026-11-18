@@ -2,6 +2,7 @@
 // sends item IDs and folder names; Rust resolves them to paths.
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { Location, PickedFolder } from "./folders";
 
 export type Category =
   | "folder" | "image" | "video" | "audio" | "document" | "spreadsheet"
@@ -31,6 +32,8 @@ export interface HeatmapCell {
 }
 
 export interface ScanResponse {
+  /** The folder's name, e.g. "Downloads". */
+  name: string;
   root: string;
   items: FileItem[];
   skipped: string[];
@@ -103,8 +106,9 @@ export type ModelId = (typeof MODELS)[number]["id"];
 export const api = {
   backends: () => invoke<BackendStatus>("claude_backends"),
   setApiKey: (key: string) => invoke<void>("set_api_key", { key }),
-  scan: () => invoke<ScanResponse>("scan_downloads"),
-  classify: (model: ModelId) => invoke<Plan>("classify_downloads", { model }),
+  pickFolder: () => invoke<PickedFolder | null>("pick_folder"),
+  scan: (location: Location) => invoke<ScanResponse>("scan_folder", { location }),
+  classify: (model: ModelId) => invoke<Plan>("classify_folder", { model }),
   cancelClassify: () => invoke<void>("cancel_classify"),
   apply: (decisions: Decisions) => invoke<ApplyReport>("apply_plan", { decisions }),
   lastApply: () => invoke<UndoAvailable | null>("last_apply"),

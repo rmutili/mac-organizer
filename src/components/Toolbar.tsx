@@ -5,6 +5,8 @@ export type Busy = "scanning" | "organizing" | "applying" | null;
 interface ToolbarProps {
   busy: Busy;
   hasScan: boolean;
+  /** Name of the folder being organized, e.g. "Downloads". */
+  folderName: string;
   canOrganize: boolean;
   backendLabel: string;
   model: ModelId;
@@ -14,6 +16,7 @@ interface ToolbarProps {
   onScan: () => void;
   onOrganize: () => void;
   onCancel: () => void;
+  onChangeFolder: () => void;
 }
 
 function Progress({ fraction, label }: { fraction: number; label: string }) {
@@ -47,7 +50,9 @@ export function Toolbar(props: ToolbarProps) {
   const { busy, scanProgress: scan, classifyProgress: classify } = props;
   return (
     <header className="toolbar">
-      <h1 className="toolbar__title">Mac Organizer</h1>
+      <h1 className="toolbar__title">
+        Mac Organizer{props.hasScan && <span className="toolbar__folder"> · {props.folderName}</span>}
+      </h1>
 
       {busy === "scanning" && scan && scan.total > 0 && (
         <Progress fraction={(scan.done + 1) / scan.total} label={scanLabel(scan)} />
@@ -79,8 +84,13 @@ export function Toolbar(props: ToolbarProps) {
           </option>
         ))}
       </select>
+      {props.hasScan && (
+        <button className="btn" onClick={props.onChangeFolder} disabled={busy !== null}>
+          Change folder
+        </button>
+      )}
       <button className="btn" onClick={props.onScan} disabled={busy !== null}>
-        {props.hasScan ? "Rescan" : "Scan Downloads"}
+        {props.hasScan ? "Rescan" : `Scan ${props.folderName}`}
       </button>
       <button className="btn btn--primary" onClick={props.onOrganize} disabled={busy !== null || !props.canOrganize}>
         Organize with Claude

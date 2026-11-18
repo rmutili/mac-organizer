@@ -23,7 +23,7 @@ fn undo_dir(app: &AppHandle) -> Result<PathBuf, String> {
 /// Resolve an item ID from the current scan to its path on disk.
 fn item_path(state: &AppState, item_id: ItemId) -> Result<(PathBuf, i64), String> {
     let scan = lock(&state.scan)?;
-    let scan = scan.as_ref().ok_or("Scan your Downloads folder first.")?;
+    let scan = scan.as_ref().ok_or("Scan a folder first.")?;
     let item = scan
         .items
         .iter()
@@ -42,7 +42,7 @@ pub async fn apply_plan(
 ) -> Result<ApplyReport, String> {
     let (root, operations) = {
         let scan = lock(&state.scan)?;
-        let scan = scan.as_ref().ok_or("Scan your Downloads folder first.")?;
+        let scan = scan.as_ref().ok_or("Scan a folder first.")?;
         let plan = lock(&state.plan)?;
         let plan = plan.as_ref().ok_or("Ask Claude to organize first.")?;
         let operations = validate_decisions(&decisions, &scan.items, &plan.folders)?;

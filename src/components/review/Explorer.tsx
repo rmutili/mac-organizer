@@ -30,7 +30,7 @@ const VIEW_COPY: Record<string, { title: string; subtitle: string }> = {
     subtitle: "These look like credentials or keys. They're never suggested for the Trash automatically.",
   },
   unchanged: {
-    title: "Stays in Downloads",
+    title: "Stays where it is",
     subtitle: "Items that won't be moved or trashed.",
   },
 };
@@ -51,7 +51,9 @@ export function Explorer({ scan, plan, decisions, onDecide, onToggleTrash, onErr
   const folder = view.kind === "folder" ? plan.folders.find((f) => f.name === view.name) : undefined;
   const copy = folder
     ? { title: folder.name, subtitle: folder.description }
-    : (VIEW_COPY[view.kind] ?? { title: "", subtitle: "" });
+    : view.kind === "unchanged"
+      ? { ...VIEW_COPY.unchanged, title: `Stays in ${scan.name}` }
+      : (VIEW_COPY[view.kind] ?? { title: "", subtitle: "" });
   const subtitle = `${count.count.toLocaleString()} items · ${formatBytes(count.bytes)}${copy.subtitle ? ` · ${copy.subtitle}` : ""}`;
 
   const quickLook = (id: number) => api.quickLook(id).catch((e) => onError(errorMessage(e)));
@@ -60,6 +62,7 @@ export function Explorer({ scan, plan, decisions, onDecide, onToggleTrash, onErr
     <div className="explorer">
       <Sidebar
         plan={plan}
+        folderName={scan.name}
         counts={counts}
         view={view}
         onSelect={(v) => {

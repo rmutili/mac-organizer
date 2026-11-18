@@ -55,7 +55,7 @@ export function HeatmapView({ scan, footer }: HeatmapViewProps) {
               : `${scan.heatmap.total_file_count.toLocaleString()} files`}
           </h2>
           <p className="overview__caption">
-            {scan.items.length.toLocaleString()} items in Downloads, by type and by when they were last modified
+            {scan.items.length.toLocaleString()} items in {scan.name}, by type and by when they were last modified
           </p>
         </div>
         <div className="segmented" role="group" aria-label="Measure">
@@ -68,7 +68,7 @@ export function HeatmapView({ scan, footer }: HeatmapViewProps) {
         </div>
       </header>
 
-      <div className="heatmap" role="table" aria-label="Downloads by type and age">
+      <div className="heatmap" role="table" aria-label={`${scan.name} by type and age`}>
         <div role="row" style={{ display: "contents" }}>
           <span />
           {AGES.map((age) => (

@@ -280,3 +280,46 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Folder chooser on the start screen */
+.folder-chooser {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--color-window);
+  border: 1px solid var(--color-border);
+}
+
+.folder-chooser button {
+  border: 0;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  color: var(--color-text-muted);
+  transition: background var(--duration-fast);
+}
+
+.folder-chooser button:hover:not(:disabled) {
+  background: var(--color-row-hover);
+}
+
+.folder-chooser button[aria-pressed="true"] {
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-weight: 600;
+  box-shadow: var(--shadow-control);
+}
+
+.folder-chooser button:focus-visible {
+  outline: 3px solid color-mix(in oklch, var(--color-accent) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.toolbar__folder {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}

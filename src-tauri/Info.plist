@@ -4,5 +4,11 @@
 <dict>
   <key>NSDownloadsFolderUsageDescription</key>
   <string>Mac Organizer scans your Downloads folder to suggest how to group files and what to clean up.</string>
+  <key>NSDesktopFolderUsageDescription</key>
+  <string>Mac Organizer scans your Desktop when you choose it, to suggest how to group files and what to clean up.</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>Mac Organizer scans your Documents folder when you choose it, to suggest how to group files and what to clean up.</string>
+  <key>NSRemovableVolumesUsageDescription</key>
+  <string>Mac Organizer scans folders on external drives when you choose them.</string>
 </dict>
 </plist>

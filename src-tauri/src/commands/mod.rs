@@ -18,6 +18,9 @@ use crate::scanner::types::Scan;
 pub struct AppState {
     pub scan: Mutex<Option<Scan>>,
     pub plan: Mutex<Option<Plan>>,
+    /// The folder last chosen in the folder dialog, already checked by
+    /// `roots::check_root`. The webview refers to it as `Location::Picked`.
+    pub picked: Mutex<Option<std::path::PathBuf>>,
     /// Running `claude -p` processes, for Cancel and for app exit.
     pub processes: Arc<ProcessRegistry>,
 }

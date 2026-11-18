@@ -4,6 +4,7 @@
 pub mod category;
 pub mod duplicates;
 pub mod heatmap;
+pub mod roots;
 pub mod sensitive;
 pub mod types;
 pub mod walk;

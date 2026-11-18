@@ -8,13 +8,16 @@ mod scanner;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Used from Rust only (the folder picker); the webview isn't granted its commands.
+        .plugin(tauri_plugin_dialog::init())
         .manage(commands::AppState::default())
         .invoke_handler(tauri::generate_handler![
-            commands::scan::scan_downloads,
+            commands::scan::pick_folder,
+            commands::scan::scan_folder,
             commands::classify::set_api_key,
             commands::classify::claude_backends,
             commands::classify::clear_api_key,
-            commands::classify::classify_downloads,
+            commands::classify::classify_folder,
             commands::classify::cancel_classify,
             commands::ops::apply_plan,
             commands::ops::last_apply,

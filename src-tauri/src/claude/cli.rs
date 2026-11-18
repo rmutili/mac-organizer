@@ -220,7 +220,13 @@ mod tests {
 
     #[test]
     fn invocation_disables_tools_and_sends_items_on_stdin() {
-        let body = build_request("claude-opus-5-5", &[], &["Docs".to_string()], 0);
+        let body = build_request(
+            "claude-opus-5-5",
+            "Downloads",
+            &[],
+            &["Docs".to_string()],
+            0,
+        );
 
         let (args, stdin) = cli_invocation(&body).unwrap();
 
@@ -302,14 +308,20 @@ mod tests {
 
         let proposed = run_batch(
             &binary,
-            &build_folders_request("claude-haiku-5-5", &items),
+            &build_folders_request("claude-haiku-5-5", "Downloads", &items),
             &ProcessRegistry::default(),
         )
         .unwrap();
         assert!(!proposed.folders.is_empty());
 
         let folders = vec!["Installers".to_string(), "Invoices".to_string()];
-        let body = build_request("claude-haiku-5-5", &items, &folders, 1_800_000_000);
+        let body = build_request(
+            "claude-haiku-5-5",
+            "Downloads",
+            &items,
+            &folders,
+            1_800_000_000,
+        );
         let plan = run_batch(&binary, &body, &ProcessRegistry::default()).unwrap();
 
         assert_eq!(plan.assignments.len(), 2);

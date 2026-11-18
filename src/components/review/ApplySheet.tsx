@@ -6,6 +6,7 @@ import type { Summary } from "../../lib/review";
 type SheetProps =
   | {
       mode: "confirm";
+      folderName: string;
       summary: Summary;
       allCopiesTrashed: number;
       isBusy: boolean;
@@ -56,7 +57,10 @@ export function ApplySheet(props: SheetProps) {
         {props.mode === "confirm" && (
           <>
             <h2 id="sheet-title">Apply these changes?</h2>
-            <p>Files are moved within Downloads, and anything marked goes to the Trash. You can undo this afterwards.</p>
+            <p>
+              Files are moved within {props.folderName}, and anything marked goes to the Trash. You can undo this
+              afterwards.
+            </p>
             <div className="sheet__stats">
               <Stat value={props.summary.moves.toLocaleString()} label="moved into folders" />
               <Stat value={props.summary.trash.toLocaleString()} label="to the Trash" />
@@ -65,7 +69,7 @@ export function ApplySheet(props: SheetProps) {
             {props.allCopiesTrashed > 0 && (
               <p style={{ color: "var(--color-danger)" }}>
                 Every copy of {props.allCopiesTrashed} duplicated file{props.allCopiesTrashed === 1 ? " is" : "s are"}{" "}
-                marked for the Trash, so no copy will stay in Downloads.
+                marked for the Trash, so no copy will stay in {props.folderName}.
               </p>
             )}
             <div className="sheet__actions">
