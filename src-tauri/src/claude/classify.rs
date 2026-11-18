@@ -93,6 +93,7 @@ impl<'a, P: Fn(&ClassifyProgress)> Tracker<'a, P> {
 /// finishes.
 pub async fn classify<F, Fut, P>(
     items: &[FileItem],
+    folder: &str,
     model: &str,
     now: i64,
     send: F,
@@ -112,7 +113,7 @@ where
     tracker.update(|_| {});
 
     tracker.start(0, &[]);
-    let proposed = send(build_folders_request(model, items)).await?;
+    let proposed = send(build_folders_request(model, folder, items)).await?;
     tracker.finish(0);
     let folders = usable_folder_names(&proposed);
     if folders.is_empty() {
@@ -127,7 +128,7 @@ where
         .enumerate()
         .map(|(offset, &batch)| {
             let index = offset + 1;
-            let body = build_request(model, batch, folders_ref, now);
+            let body = build_request(model, folder, batch, folders_ref, now);
             async move {
                 tracker.start(index, batch);
                 let plan = send(body).await?;
@@ -232,6 +233,7 @@ mod tests {
 
         let plan = classify(
             &all,
+            "Downloads",
             DEFAULT_MODEL,
             0,
             |req| {
@@ -260,6 +262,7 @@ mod tests {
     async fn fails_when_no_usable_folders_are_proposed() {
         let result = classify(
             &items(3),
+            "Downloads",
             DEFAULT_MODEL,
             0,
             |_req| async { Ok(RawPlan::default()) },
@@ -275,9 +278,14 @@ mod tests {
         let all = items(BATCH_SIZE as u32 * 2 + 5);
         let events: Mutex<Vec<ClassifyProgress>> = Mutex::new(Vec::new());
 
-        classify(&all, DEFAULT_MODEL, 0, fake_send, |p: &ClassifyProgress| {
-            events.lock().unwrap().push(p.clone())
-        })
+        classify(
+            &all,
+            "Downloads",
+            DEFAULT_MODEL,
+            0,
+            fake_send,
+            |p: &ClassifyProgress| events.lock().unwrap().push(p.clone()),
+        )
         .await
         .unwrap();
 
@@ -303,6 +311,7 @@ mod tests {
     async fn any_failed_batch_fails_the_whole_run() {
         let result = classify(
             &items(BATCH_SIZE as u32 + 1),
+            "Downloads",
             DEFAULT_MODEL,
             0,
             |_req| async { Err::<RawPlan, String>("boom".into()) },
@@ -317,6 +326,7 @@ mod tests {
     async fn empty_scan_makes_no_requests() {
         let plan = classify(
             &[],
+            "Downloads",
             DEFAULT_MODEL,
             0,
             |_req| async { panic!("should not be called") },
